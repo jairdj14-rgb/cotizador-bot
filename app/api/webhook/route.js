@@ -13,23 +13,24 @@ import {
 // ------------------------
 // GET (VERIFICACIÓN META)
 // ------------------------
-
 export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
+  const { searchParams } = new URL(req.url);
 
-    const mode = searchParams.get("hub.mode");
-    const token = searchParams.get("hub.verify_token");
-    const challenge = searchParams.get("hub.challenge");
+  const mode = searchParams.get("hub.mode");
+  const token = searchParams.get("hub.verify_token");
+  const challenge = searchParams.get("hub.challenge");
 
-    if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
-      return new Response(challenge, { status: 200 });
-    }
+  console.log("TOKEN VERCEL:", process.env.VERIFY_TOKEN);
+  console.log("TOKEN URL:", token);
 
-    return new Response("Forbidden", { status: 403 });
-  } catch (err) {
-    return new Response("Error", { status: 500 });
+  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
+    return new Response(challenge, { status: 200 });
   }
+
+  return new Response(
+    `Forbidden → token:${token} env:${process.env.VERIFY_TOKEN}`,
+    { status: 403 },
+  );
 }
 
 // ------------------------
