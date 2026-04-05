@@ -24,6 +24,34 @@ async function logStripe(data) {
   }
 }
 
+// ===== HELPERS =====
+async function getUser(waUser) {
+  const raw = await redis.get(kUser(waUser));
+  return raw ? JSON.parse(raw) : {};
+}
+
+async function saveUser(waUser, data) {
+  await redis.set(kUser(waUser), JSON.stringify(data));
+}
+
+async function downgradeUser(waUser) {
+  const user = await getUser(waUser);
+
+  const next = {
+    ...user,
+    plan: "FREE",
+    billingStatus: "inactive",
+  };
+
+  await saveUser(waUser, next);
+
+  await logStripe({
+    level: "warn",
+    stage: "user_downgraded",
+    waUser,
+  });
+}
+
 // ===== GET =====
 export async function GET() {
   return new Response("stripe webhook ok", { status: 200 });
@@ -34,10 +62,8 @@ export async function POST(req) {
   const signature = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  // ===== DEBUG: SECRET COMPLETO =====
   await logStripe({
-    stage: "debug_secret_full",
-    secretFull: webhookSecret,
+    stage: "debug_secret",
     secretSuffix: webhookSecret?.slice(-6),
   });
 
@@ -64,13 +90,6 @@ export async function POST(req) {
   const rawBody = await req.arrayBuffer();
   const buf = Buffer.from(rawBody);
 
-  await logStripe({
-    level: "info",
-    stage: "incoming",
-    payloadLength: buf.length,
-    signatureStart: signature.slice(0, 30),
-  });
-
   let event;
 
   // ===== SIGNATURE CHECK =====
@@ -81,16 +100,11 @@ export async function POST(req) {
       level: "error",
       stage: "signature_failed",
       message: err.message,
-      hint: "Revisa si el secret coincide EXACTAMENTE con el del endpoint en Stripe",
-      signatureStart: signature.slice(0, 20),
-      secretUsed: webhookSecret,
-      secretSuffix: webhookSecret?.slice(-6),
     });
 
     return new Response("Invalid signature", { status: 400 });
   }
 
-  // ===== SUCCESS =====
   await logStripe({
     level: "success",
     stage: "signature_ok",
@@ -116,17 +130,19 @@ export async function POST(req) {
   // ===== HANDLE =====
   try {
     switch (event.type) {
+      // ✅ COMPRA INICIAL
       case "checkout.session.completed": {
         const session = event.data.object;
 
         const waUser = session.metadata?.waUser || session.client_reference_id;
         const plan = session.metadata?.plan;
+        const customerId =
+          typeof session.customer === "string" ? session.customer : null;
 
         await logStripe({
-          stage: "metadata_check",
+          stage: "checkout_completed",
           waUser,
           plan,
-          metadata: session.metadata,
         });
 
         if (!waUser || !plan) {
@@ -137,14 +153,13 @@ export async function POST(req) {
           break;
         }
 
-        const current = (await redis.get(kUser(waUser))) || {};
+        const current = await getUser(waUser);
 
         const next = {
           ...current,
           plan,
           billingStatus: "active",
-          stripeCustomerId:
-            typeof session.customer === "string" ? session.customer : null,
+          stripeCustomerId: customerId,
           stripeSubscriptionId:
             typeof session.subscription === "string"
               ? session.subscription
@@ -152,7 +167,12 @@ export async function POST(req) {
           planActivatedAt: Date.now(),
         };
 
-        await redis.set(kUser(waUser), next);
+        await saveUser(waUser, next);
+
+        // 🔥 INDEX CLAVE
+        if (customerId) {
+          await redis.set(`stripe:customer:${customerId}`, waUser);
+        }
 
         await logStripe({
           level: "success",
@@ -160,6 +180,58 @@ export async function POST(req) {
           waUser,
           plan,
         });
+
+        break;
+      }
+
+      // ✅ RENOVACIÓN EXITOSA
+      case "invoice.paid": {
+        const invoice = event.data.object;
+        const customerId = invoice.customer;
+
+        const waUser = await redis.get(`stripe:customer:${customerId}`);
+
+        if (!waUser) break;
+
+        const user = await getUser(waUser);
+
+        user.billingStatus = "active";
+
+        await saveUser(waUser, user);
+
+        await logStripe({
+          level: "success",
+          stage: "invoice_paid",
+          waUser,
+        });
+
+        break;
+      }
+
+      // ❌ PAGO FALLIDO
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        const customerId = invoice.customer;
+
+        const waUser = await redis.get(`stripe:customer:${customerId}`);
+
+        if (!waUser) break;
+
+        await downgradeUser(waUser);
+
+        break;
+      }
+
+      // ❌ CANCELACIÓN
+      case "customer.subscription.deleted": {
+        const sub = event.data.object;
+        const customerId = sub.customer;
+
+        const waUser = await redis.get(`stripe:customer:${customerId}`);
+
+        if (!waUser) break;
+
+        await downgradeUser(waUser);
 
         break;
       }
@@ -172,6 +244,7 @@ export async function POST(req) {
         });
     }
 
+    // ✅ marcar evento procesado
     await redis.set(`stripe:event:${event.id}`, true);
 
     return new Response("ok", { status: 200 });
@@ -182,6 +255,6 @@ export async function POST(req) {
       message: err.message,
     });
 
-    return new Response("handler error", { status: 500 });
+    return new Response("ok", { status: 200 }); // ⚠️ IMPORTANTE: evitar retries infinitos
   }
 }
