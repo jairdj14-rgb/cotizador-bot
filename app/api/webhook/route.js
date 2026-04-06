@@ -93,7 +93,7 @@ export async function POST(req) {
         }
 
         // ✅ Guardar con expiración REAL
-        await redis.set(dedupeKey, "1", { ex: 60 });
+        await redis.set(dedupeKey, "1", { ex: 5 });
       } catch (e) {
         console.log("[DEDUPE ERROR - CONTINUE]", e);
       }
@@ -170,6 +170,10 @@ export async function POST(req) {
     // FLOW
     // =========================
     const res = await flow(from, text, image);
+    console.log("[FLOW OUTPUT]", {
+      from,
+      res,
+    });
 
     console.log("[FLOW RESULT]", res);
 
@@ -187,7 +191,6 @@ export async function POST(req) {
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
-
     return new Response("ok", { status: 200 });
   } catch (error) {
     console.error("[WEBHOOK ERROR]", error);

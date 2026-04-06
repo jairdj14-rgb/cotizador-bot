@@ -1,13 +1,57 @@
-// /api/debug/user/route.js
-
 import { redis, kUser } from "../../../../lib/redis";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const waUser = searchParams.get("waUser");
+  try {
+    const { searchParams } = new URL(req.url);
+    const waUser = searchParams.get("waUser");
 
-  const raw = await redis.get(kUser(waUser));
-  const user = raw ? JSON.parse(raw) : null;
+    if (!waUser) {
+      return new Response(JSON.stringify({ error: "Missing waUser param" }), {
+        status: 400,
+      });
+    }
 
-  return new Response(JSON.stringify(user), { status: 200 });
+    const cleanWaUser = String(waUser).trim();
+
+    const raw = await redis.get(kUser(cleanWaUser));
+
+    let user = null;
+
+    if (raw) {
+      try {
+        // 🔥 Soporta ambos casos (string o objeto)
+        user = typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch (err) {
+        console.error("[debug-user parse error]", raw);
+
+        user = {
+          error: "Corrupted data in Redis",
+          raw,
+        };
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        waUser: cleanWaUser,
+        exists: !!raw,
+        user,
+      }),
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("[debug-user error]", error);
+
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: error.message,
+      }),
+      { status: 500 },
+    );
+  }
 }
