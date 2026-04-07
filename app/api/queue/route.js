@@ -21,7 +21,12 @@ export async function GET() {
       console.log("[QUEUE JOB]", job);
 
       try {
+        console.log("[SENDING TO]", job.to);
+        console.log("[SENDING PAYLOAD]", job.response);
+
         const result = await sendMessage(job.to, job.response);
+
+        console.log("[WHATSAPP RESPONSE]", result);
 
         console.log("[QUEUE SENT RESULT]", result);
         console.log("[QUEUE OK]", job.to);
