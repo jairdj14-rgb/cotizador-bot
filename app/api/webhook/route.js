@@ -214,8 +214,20 @@ export async function POST(req) {
       console.log("[QUEUE] enqueued OK");
 
       //  TRIGGER WORKER (SIN CRON)
+      await enqueueMessage({
+        to: from,
+        plan: userData?.plan,
+        response: res,
+      });
+
+      console.log("[QUEUE] enqueued OK");
+
+      // 🔥 FIX: pequeño delay para consistencia Redis
+      await new Promise((r) => setTimeout(r, 150));
+
       console.log("[QUEUE] triggering worker...");
-      fetch(`${process.env.APP_URL}/api/queue`)
+
+      await fetch(`${process.env.APP_URL}/api/queue`)
         .then((res) => res.text())
         .then((txt) => console.log("[QUEUE RESPONSE]", txt))
         .catch((err) => console.error("[QUEUE TRIGGER ERROR]", err));
