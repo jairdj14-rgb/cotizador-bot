@@ -202,11 +202,13 @@ export async function POST(req) {
     try {
       console.log("[SMART SEND]");
       const userData = await getUser(from);
+
       console.log("[QUEUE] about to enqueue", {
         to: from,
         plan: userData?.plan,
         response: res,
       });
+
       await enqueueMessage({
         to: from,
         plan: userData?.plan,
@@ -216,28 +218,16 @@ export async function POST(req) {
       console.log("[QUEUE] enqueued OK");
 
       // 🔥 LLAMAR WORKER 2 VECES (FIX SIMPLE)
-      await fetch(`${process.env.APP_URL}/api/queue`);
-      await new Promise((r) => setTimeout(r, 200));
-      await fetch(`${process.env.APP_URL}/api/queue`);
-
-      //  TRIGGER WORKER (SIN CRON)
-      await enqueueMessage({
-        to: from,
-        plan: userData?.plan,
-        response: res,
-      });
-
-      console.log("[QUEUE] enqueued OK");
-
-      // 🔥 FIX: pequeño delay para consistencia Redis
       await new Promise((r) => setTimeout(r, 150));
 
       console.log("[QUEUE] triggering worker...");
 
-      await fetch(`${process.env.APP_URL}/api/queue`)
-        .then((res) => res.text())
-        .then((txt) => console.log("[QUEUE RESPONSE]", txt))
-        .catch((err) => console.error("[QUEUE TRIGGER ERROR]", err));
+      const responseWorker = await fetch(`${process.env.APP_URL}/api/queue`);
+      const text = await responseWorker.text();
+
+      await fetch(`${process.env.APP_URL}/api/queue`);
+
+      console.log("[QUEUE RESPONSE]", text);
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
