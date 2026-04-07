@@ -215,7 +215,10 @@ export async function POST(req) {
 
       //  TRIGGER WORKER (SIN CRON)
       console.log("[QUEUE] triggering worker...");
-      fetch(`${process.env.APP_URL}/api/queue`).catch(() => {});
+      fetch(`${process.env.APP_URL}/api/queue`)
+        .then((res) => res.text())
+        .then((txt) => console.log("[QUEUE RESPONSE]", txt))
+        .catch((err) => console.error("[QUEUE TRIGGER ERROR]", err));
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }

@@ -2,19 +2,34 @@ import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
 import { sendMessage } from "../../../lib/wa";
 
 export async function GET() {
+  console.log("[QUEUE START]");
+
   try {
     let processed = 0;
 
     while (processed < 5) {
+      console.log("[QUEUE LOOP]", processed);
+
       const job = await dequeueMessage();
 
-      if (!job) break;
+      if (!job) {
+        console.log("[QUEUE EMPTY]");
+        break;
+      }
+
+      console.log("[QUEUE JOB]", job);
 
       try {
-        await sendMessage(job.to, job.response);
+        const result = await sendMessage(job.to, job.response);
+
+        console.log("[QUEUE SENT RESULT]", result);
         console.log("[QUEUE OK]", job.to);
       } catch (err) {
-        console.error("[QUEUE FAIL]", err);
+        console.error("[QUEUE FAIL FULL]", {
+          error: err?.message,
+          stack: err?.stack,
+          raw: err,
+        });
 
         const attempts = job.attempts || 0;
 
@@ -23,12 +38,14 @@ export async function GET() {
 
           console.log("[RETRY IN]", delay, "ms");
 
+          // ⚠️ IMPORTANTE: esto en Vercel puede no ejecutarse siempre
           setTimeout(async () => {
             try {
               await enqueueMessage({
                 ...job,
                 attempts: attempts + 1,
               });
+              console.log("[RETRY ENQUEUED]");
             } catch (e) {
               console.error("[RETRY ENQUEUE ERROR]", e);
             }
@@ -38,7 +55,7 @@ export async function GET() {
         }
       }
 
-      await sleep(400); // 🔥 anti spam GLOBAL
+      await sleep(400); // anti spam
       processed++;
     }
 
@@ -46,16 +63,15 @@ export async function GET() {
   } catch (err) {
     console.error("[QUEUE GLOBAL ERROR]", err);
 
-    // 🔥 CLAVE: Vercel siempre recibe OK
     return Response.json({ ok: true, error: true });
   }
 }
 
-// 🔥 BACKOFF (retry inteligente)
+// BACKOFF
 function getBackoff(attempts) {
-  if (attempts === 0) return 2000; // 2s
-  if (attempts === 1) return 5000; // 5s
-  if (attempts === 2) return 10000; // 10s
+  if (attempts === 0) return 2000;
+  if (attempts === 1) return 5000;
+  if (attempts === 2) return 10000;
   return 15000;
 }
 
