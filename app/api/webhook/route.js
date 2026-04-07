@@ -196,12 +196,8 @@ export async function POST(req) {
 
     if (!res || res === "__queued__") {
       console.log("[FLOW HANDLED BY QUEUE]");
-      return;
+      return new Response("ok", { status: 200 });
     }
-
-    // =========================
-    // SEND
-    // =========================
     // =========================
     // SEND
     // =========================
