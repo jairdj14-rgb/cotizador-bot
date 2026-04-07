@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { flow } from "../../../lib/flow";
-import { enqueueMessage } from "@/lib/queue";
+import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
 import { getUser, saveUser } from "../../../lib/redis";
 import { normalizePhone } from "../../../lib/phone";
 import { redis } from "../../../lib/redis"; // 🔥 IMPORTANTE: usar redis directo
