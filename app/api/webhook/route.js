@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { flow } from "../../../lib/flow";
+import { enqueueMessage } from "../../../lib/queue";
 import { getUser, saveUser } from "../../../lib/redis";
 import { normalizePhone } from "../../../lib/phone";
 import { redis } from "../../../lib/redis"; // 🔥 IMPORTANTE: usar redis directo
@@ -200,15 +201,20 @@ export async function POST(req) {
     try {
       console.log("[SMART SEND]");
       const userData = await getUser(from);
-
+      console.log("[QUEUE] about to enqueue", {
+        to: from,
+        plan: userData?.plan,
+        response: res,
+      });
       await enqueueMessage({
         to: from,
         plan: userData?.plan,
         response: res,
       });
+      console.log("[QUEUE] enqueued OK");
 
       //  TRIGGER WORKER (SIN CRON)
-
+      console.log("[QUEUE] triggering worker...");
       fetch(`${process.env.APP_URL}/api/queue`).catch(() => {});
     } catch (err) {
       console.error("[SEND ERROR]", err);
