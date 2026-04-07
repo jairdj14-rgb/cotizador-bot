@@ -48,6 +48,7 @@ export async function POST(req) {
     }
 
     const msg = value.messages[0];
+    console.log("[WEBHOOK RAW BODY]", JSON.stringify(body, null, 2));
 
     if (!msg || !msg.from) {
       return new Response("ok", { status: 200 });
@@ -70,7 +71,7 @@ export async function POST(req) {
       msg.interactive?.button_reply?.title ||
       msg.button?.text ||
       "";
-
+    console.log("[RAW TEXT BEFORE CLEAN]", text);
     const image = msg.image || null;
 
     console.log("[INCOMING]", {
@@ -183,7 +184,9 @@ export async function POST(req) {
     // =========================
     // FLOW
     // =========================
-    const res = await flow(from, text, image);
+    console.log("[TEXT TO FLOW]", text);
+    const res = await flow(from, text);
+    console.log("[FLOW RETURN]", res);
     console.log("[FLOW OUTPUT]", {
       from,
       res,
