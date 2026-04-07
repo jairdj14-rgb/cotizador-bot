@@ -2,7 +2,7 @@ import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
 import { sendMessage } from "../../../lib/wa";
 
 export async function GET() {
-  console.log("[REDIS URL QUEUE]", process.env.REDIS_URL);
+  console.log("[REDIS URL QUEUE]", process.env.UPSTASH_REDIS_REST_URL);
   console.log("[QUEUE START]");
 
   try {
