@@ -196,6 +196,13 @@ export async function POST(req) {
 
     if (!res || res === "__queued__") {
       console.log("[FLOW HANDLED BY QUEUE]");
+
+      // 🔥 DISPARA WORKER AQUÍ
+      fetch(`${process.env.APP_URL}/api/queue`)
+        .then((r) => r.text())
+        .then((t) => console.log("[QUEUE RESPONSE]", t))
+        .catch((e) => console.error("[QUEUE ERROR]", e));
+
       return new Response("ok", { status: 200 });
     }
     // =========================
