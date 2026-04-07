@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 
 import { flow } from "../../../lib/flow";
-import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
 import { getUser, saveUser } from "../../../lib/redis";
 import { normalizePhone } from "../../../lib/phone";
 import { redis } from "../../../lib/redis"; // 🔥 IMPORTANTE: usar redis directo
@@ -207,6 +206,10 @@ export async function POST(req) {
         plan: userData?.plan,
         response: res,
       });
+
+      //  TRIGGER WORKER (SIN CRON)
+
+      fetch(`${process.env.APP_URL}/api/queue`).catch(() => {});
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
