@@ -199,6 +199,9 @@ export async function POST(req) {
     // =========================
     // SEND
     // =========================
+    // =========================
+    // SEND
+    // =========================
     try {
       console.log("[SMART SEND]");
       const userData = await getUser(from);
@@ -217,17 +220,11 @@ export async function POST(req) {
 
       console.log("[QUEUE] enqueued OK");
 
-      // 🔥 LLAMAR WORKER 2 VECES (FIX SIMPLE)
-      await new Promise((r) => setTimeout(r, 150));
+      // 🔥 PROCESAR DIRECTO (FIX REAL)
+      const workerRes = await fetch(`${process.env.APP_URL}/api/queue`);
+      const workerText = await workerRes.text();
 
-      console.log("[QUEUE] triggering worker...");
-
-      const responseWorker = await fetch(`${process.env.APP_URL}/api/queue`);
-      const text = await responseWorker.text();
-
-      await fetch(`${process.env.APP_URL}/api/queue`);
-
-      console.log("[QUEUE RESPONSE]", text);
+      console.log("[QUEUE RESPONSE]", workerText);
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
