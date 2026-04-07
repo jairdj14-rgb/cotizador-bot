@@ -212,7 +212,13 @@ export async function POST(req) {
         plan: userData?.plan,
         response: res,
       });
+
       console.log("[QUEUE] enqueued OK");
+
+      // 🔥 LLAMAR WORKER 2 VECES (FIX SIMPLE)
+      await fetch(`${process.env.APP_URL}/api/queue`);
+      await new Promise((r) => setTimeout(r, 200));
+      await fetch(`${process.env.APP_URL}/api/queue`);
 
       //  TRIGGER WORKER (SIN CRON)
       await enqueueMessage({
