@@ -35,7 +35,7 @@ export async function GET(req) {
 // WEBHOOK
 // =========================
 export async function POST(req) {
-  console.log("[REDIS URL WEBHOOK]", process.env.REDIS_URL);
+  console.log("[REDIS URL WEBHOOK]", process.env.UPSTASH_REDIS_REST_URL);
   try {
     const body = await req.json();
 
