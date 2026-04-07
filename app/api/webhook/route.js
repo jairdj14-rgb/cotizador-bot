@@ -191,9 +191,9 @@ export async function POST(req) {
 
     console.log("[FLOW RESULT]", res);
 
-    if (!res) {
-      console.log("[NO FLOW RESPONSE]");
-      return new Response("ok", { status: 200 });
+    if (!res || res === "__queued__") {
+      console.log("[FLOW HANDLED BY QUEUE]");
+      return;
     }
 
     // =========================
