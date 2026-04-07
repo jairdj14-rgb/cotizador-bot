@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { flow } from "../../../lib/flow";
+import { enqueueMessage } from "@/lib/queue";
 import { getUser, saveUser } from "../../../lib/redis";
 import { normalizePhone } from "../../../lib/phone";
 import { redis } from "../../../lib/redis"; // 🔥 IMPORTANTE: usar redis directo
@@ -141,7 +142,10 @@ export async function POST(req) {
 2 Color (HEX)
 3 Logo (imagen)
 4 Ver configuración
-5 Volver`,
+5 Volver
+6 Teléfono
+7 Sitio Web
+8 Email`,
           });
 
           return new Response("ok", { status: 200 });
@@ -165,6 +169,15 @@ export async function POST(req) {
     if (process.env.NODE_ENV !== "production") {
       await debugWhatsAppConfig();
     }
+    const last = await redis.get(`last_msg:${from}`);
+    const now = Date.now();
+
+    if (last && now - last < 800) {
+      console.log("[SPAM BLOCKED]", from);
+      return new Response("ok");
+    }
+
+    await redis.set(`last_msg:${from}`, now);
 
     // =========================
     // FLOW
@@ -187,7 +200,13 @@ export async function POST(req) {
     // =========================
     try {
       console.log("[SMART SEND]");
-      await sendMessage(from, res);
+      const userData = await getUser(from);
+
+      await enqueueMessage({
+        to: from,
+        plan: userData?.plan,
+        response: res,
+      });
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
