@@ -2,27 +2,37 @@ import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
 import { sendMessage } from "../../../lib/wa";
 import { redis } from "../../../lib/redis";
 
+const QUEUE_KEY = "wa_queue";
+const LOCK_KEY = "queue:running";
+
 export async function GET() {
-  // 🔥 LOCK SIMPLE (ANTI MULTI WORKER)
-  const isRunning = await redis.get("queue:running");
-
-  if (isRunning) {
-    console.log("[QUEUE LOCKED]");
-    return Response.json({ ok: true, skipped: true });
-  }
-
-  // 🔥 activar lock
-  await redis.set("queue:running", "1", { ex: 10 });
-
-  console.log("[QUEUE START]");
-
   try {
+    // =========================
+    // 🔒 LOCK (ANTI MULTI WORKER)
+    // =========================
+    const isRunning = await redis.get(LOCK_KEY);
+
+    if (isRunning) {
+      console.log("[QUEUE LOCKED]");
+      return Response.json({ ok: true, skipped: true });
+    }
+
+    // lock con TTL por seguridad
+    await redis.set(LOCK_KEY, "1", { ex: 15 });
+
+    console.log("[QUEUE START]");
+
     let totalProcessed = 0;
 
-    // 🔥 LOOP GLOBAL (hasta vaciar cola)
+    // =========================
+    // 🔁 LOOP GLOBAL (hasta vaciar cola)
+    // =========================
     while (true) {
       let processed = 0;
 
+      // =========================
+      // 📦 BATCH (5 mensajes)
+      // =========================
       while (processed < 5) {
         console.log("[QUEUE LOOP]", totalProcessed);
 
@@ -41,7 +51,7 @@ export async function GET() {
           const result = await sendMessage(job.to, job.response);
 
           console.log("[QUEUE OK]", job.to);
-          console.log("[WA RESPONSE]", result);
+          console.log("[WA RESULT]", result);
         } catch (err) {
           console.error("[QUEUE FAIL]", err);
 
@@ -52,23 +62,29 @@ export async function GET() {
 
             console.log("[RETRY IN]", delay);
 
-            // 🔥 re-encolar directo (SIN setTimeout)
+            // 🔥 reintento controlado (sin setTimeout)
+            await sleep(delay);
+
             await enqueueMessage({
               ...job,
               attempts: attempts + 1,
             });
+
+            console.log("[RETRY ENQUEUED]");
           } else {
             console.error("[QUEUE DROPPED]", job.to);
           }
         }
 
-        await sleep(400); // anti spam
+        await sleep(400); // 🔥 anti rate limit global
         processed++;
         totalProcessed++;
       }
 
-      // 🔥 revisar si queda cola
-      const remaining = await redis.llen("wa_queue");
+      // =========================
+      // 🔍 REVISAR SI QUEDA COLA
+      // =========================
+      const remaining = await redis.llen(QUEUE_KEY);
 
       console.log("[QUEUE REMAINING]", remaining);
 
@@ -76,26 +92,37 @@ export async function GET() {
         break;
       }
 
+      // pequeña pausa entre batches
       await sleep(500);
     }
 
     console.log("[QUEUE DONE]", totalProcessed);
 
-    // 🔥 liberar lock
-    await redis.del("queue:running");
+    // =========================
+    // 🔓 LIBERAR LOCK
+    // =========================
+    await redis.del(LOCK_KEY);
 
-    return Response.json({ ok: true, processed: totalProcessed });
+    return Response.json({
+      ok: true,
+      processed: totalProcessed,
+    });
   } catch (err) {
     console.error("[QUEUE GLOBAL ERROR]", err);
 
-    // 🔥 liberar lock SIEMPRE
-    await redis.del("queue:running");
+    // 🔓 liberar lock SIEMPRE
+    await redis.del(LOCK_KEY);
 
-    return Response.json({ ok: true, error: true });
+    return Response.json({
+      ok: true,
+      error: true,
+    });
   }
 }
 
-// BACKOFF
+// =========================
+// ⏱ BACKOFF
+// =========================
 function getBackoff(attempts) {
   if (attempts === 0) return 2000;
   if (attempts === 1) return 5000;
@@ -103,6 +130,9 @@ function getBackoff(attempts) {
   return 15000;
 }
 
+// =========================
+// 💤 SLEEP
+// =========================
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
