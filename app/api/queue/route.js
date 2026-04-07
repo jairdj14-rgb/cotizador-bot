@@ -1,5 +1,5 @@
-import { dequeueMessage, enqueueMessage } from "@/lib/queue";
-import { sendMessage } from "@/lib/wa";
+import { dequeueMessage, enqueueMessage } from "../../../lib/queue";
+import { sendMessage } from "../../../lib/wa";
 
 export async function GET() {
   try {
