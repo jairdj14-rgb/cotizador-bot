@@ -31,7 +31,6 @@ export async function GET() {
     return Response.json({
       users,
       free,
-      basic,
       pro,
       revenue,
       conversions,

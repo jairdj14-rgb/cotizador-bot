@@ -4,7 +4,6 @@ export async function GET() {
   const totalPDF = await redis.get("metrics:pdf_generated");
   const todayPDF = await redis.get(`metrics:pdf:${today}`);
 
-  const totalUsers = await redis.scard("metrics:active_users");
   const todayUsers = await redis.scard(`metrics:users:${today}`);
   const totalUsersTracked = await redis.scard("metrics:active_users");
 
