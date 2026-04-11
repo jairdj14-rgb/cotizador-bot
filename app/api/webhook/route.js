@@ -82,7 +82,7 @@ export async function POST(req) {
     });
 
     // =========================
-    // 🔥 DEDUPE CORRECTO (FIX REAL)
+    //  DEDUPE
     // =========================
     if (msg.id) {
       const dedupeKey = `msg:${msg.id}`;
@@ -95,14 +95,18 @@ export async function POST(req) {
           return new Response("ok", { status: 200 });
         }
 
-        // ✅ Guardar con expiración REAL
-        await redis.set(dedupeKey, "1", { ex: 5 });
+        // Guardar con expiración REAL
+        await redis.set(dedupeKey, "1", { ex: 60 });
       } catch (e) {
         console.log("[DEDUPE ERROR - CONTINUE]", e);
       }
     }
+    await redis.sadd("metrics:active_users", from);
+    const today = new Date().toISOString().slice(0, 10);
+
+    await redis.sadd(`metrics:users:${today}`, from);
     // =========================
-    // 📷 LOGO HANDLER
+    // LOGO HANDLER
     // =========================
     if (image) {
       try {

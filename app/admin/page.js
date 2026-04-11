@@ -35,6 +35,13 @@ export default function Dashboard() {
         <Card title="Pro" value={data.pro} />
         <Card title="Ingresos" value={`$${data.revenue}`} />
         <Card title="Conversiones" value={`${data.conversions}%`} />
+        <Card title="PDFs totales" value={data.metrics?.totalPDF || 0} />
+        <Card title="PDFs hoy" value={data.metrics?.todayPDF || 0} />
+        <Card
+          title="Usuarios activos"
+          value={data.metrics?.totalUsersTracked || 0}
+        />
+        <Card title="Usuarios hoy" value={data.metrics?.todayUsers || 0} />
       </div>
 
       {/* Eventos */}
