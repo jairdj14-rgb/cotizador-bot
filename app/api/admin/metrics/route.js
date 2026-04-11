@@ -8,22 +8,20 @@ export async function GET() {
 
     let users = keys.length;
     let free = 0;
-    let basic = 0;
     let pro = 0;
 
     for (const key of keys) {
       const u = await redis.get(key);
 
       if (!u?.plan || u.plan === "free") free++;
-      else if (u.plan === "basic") basic++;
       else if (u.plan === "pro") pro++;
     }
 
     // 💰 revenue estimado
-    const revenue = basic * 199 + pro * 499;
+    const revenue = pro * 144;
 
     // 📈 conversion
-    const paying = basic + pro;
+    const paying = pro;
     const conversions = users ? Math.round((paying / users) * 100) : 0;
 
     // 🔥 EVENTOS
