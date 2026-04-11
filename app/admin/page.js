@@ -6,7 +6,6 @@ export default function Dashboard() {
   const [data, setData] = useState({
     users: 0,
     free: 0,
-    basic: 0,
     pro: 0,
     revenue: 0,
     conversions: 0,
@@ -31,7 +30,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card title="Usuarios" value={data.users} />
         <Card title="Free" value={data.free} />
-        <Card title="Basic" value={data.basic} />
         <Card title="Pro" value={data.pro} />
         <Card title="Ingresos" value={`$${data.revenue}`} />
         <Card title="Conversiones" value={`${data.conversions}%`} />
