@@ -102,7 +102,7 @@ export async function POST(req) {
       }
     }
     await redis.sadd("metrics:active_users", from);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString("en-CA");
 
     await redis.sadd(`metrics:users:${today}`, from);
     // =========================
@@ -175,15 +175,6 @@ export async function POST(req) {
     if (process.env.NODE_ENV !== "production") {
       await debugWhatsAppConfig();
     }
-    const last = await redis.get(`last_msg:${from}`);
-    const now = Date.now();
-
-    if (last && now - last < 800) {
-      console.log("[SPAM BLOCKED]", from);
-      return new Response("ok");
-    }
-
-    await redis.set(`last_msg:${from}`, now);
 
     // =========================
     // FLOW
