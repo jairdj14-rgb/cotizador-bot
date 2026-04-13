@@ -192,14 +192,20 @@ export async function POST(req) {
     if (!res || res === "__queued__") {
       console.log("[FLOW HANDLED BY QUEUE]");
 
-      // 🔥 DISPARA WORKER AQUÍ
+      //  DISPARA WORKER AQUÍ
       fetch(`${process.env.APP_URL}/api/queue`)
         .then((r) => r.text())
         .then((t) => console.log("[QUEUE RESPONSE]", t))
         .catch((e) => console.error("[QUEUE ERROR]", e));
 
+      // KICK
+      setTimeout(() => {
+        fetch(`${process.env.APP_URL}/api/queue`);
+      }, 2000);
+
       return new Response("ok", { status: 200 });
     }
+
     // =========================
     // SEND
     // =========================
@@ -221,11 +227,15 @@ export async function POST(req) {
 
       console.log("[QUEUE] enqueued OK");
 
-      // 🔥 PROCESAR DIRECTO (FIX REAL)
+      //  PROCESAR DIRECTO
       const workerRes = await fetch(`${process.env.APP_URL}/api/queue`);
       const workerText = await workerRes.text();
 
       console.log("[QUEUE RESPONSE]", workerText);
+      //  KICK
+      setTimeout(() => {
+        fetch(`${process.env.APP_URL}/api/queue`);
+      }, 2000);
     } catch (err) {
       console.error("[SEND ERROR]", err);
     }
