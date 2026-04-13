@@ -102,7 +102,7 @@ export async function POST(req) {
       }
     }
     await redis.sadd("metrics:active_users", from);
-    const today = new Date().toLocaleDateString("en-CA");
+    const today = new Date().toISOString().slice(0, 10);
 
     await redis.sadd(`metrics:users:${today}`, from);
     // =========================

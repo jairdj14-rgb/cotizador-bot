@@ -1,5 +1,5 @@
 export async function GET() {
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = new Date().toISOString().slice(0, 10);
 
   const totalPDF = await redis.get("metrics:pdf_generated");
   const todayPDF = await redis.get(`metrics:pdf:${today}`);
