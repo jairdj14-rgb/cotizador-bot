@@ -1,4 +1,5 @@
 import { stripe } from "../../../lib/stripe";
+import { redis } from "../../../lib/redis";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -7,6 +8,9 @@ export async function GET(req) {
   if (!waUser) {
     return new Response("Missing user", { status: 400 });
   }
+  //  TRACK CHECKOUT CLICK
+
+  await redis.incr("metrics:checkout");
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",

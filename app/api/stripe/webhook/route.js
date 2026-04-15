@@ -130,7 +130,7 @@ export async function POST(req) {
   // ===== HANDLE =====
   try {
     switch (event.type) {
-      // ✅ COMPRA INICIAL
+      //  COMPRA INICIAL
       case "checkout.session.completed": {
         const session = event.data.object;
 
@@ -169,7 +169,10 @@ export async function POST(req) {
 
         await saveUser(waUser, next);
 
-        // 🔥 INDEX CLAVE
+        //  TRACK PAGO REAL
+        await redis.incr("metrics:paid");
+
+        //  INDEX CLAVE
         if (customerId) {
           await redis.set(`stripe:customer:${customerId}`, waUser);
         }
@@ -184,7 +187,7 @@ export async function POST(req) {
         break;
       }
 
-      // ✅ RENOVACIÓN EXITOSA
+      //  RENOVACIÓN EXITOSA
       case "invoice.paid": {
         const invoice = event.data.object;
         const customerId = invoice.customer;
@@ -198,6 +201,7 @@ export async function POST(req) {
         user.billingStatus = "active";
 
         await saveUser(waUser, user);
+        await redis.incr("metrics:renewals");
 
         await logStripe({
           level: "success",
@@ -208,7 +212,7 @@ export async function POST(req) {
         break;
       }
 
-      // ❌ PAGO FALLIDO
+      //  PAGO FALLIDO
       case "invoice.payment_failed": {
         const invoice = event.data.object;
         const customerId = invoice.customer;
